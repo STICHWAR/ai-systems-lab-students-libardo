@@ -15,3 +15,13 @@ index/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Datos biométricos y archivos privados (no subir a Git)
+labs/05-examen-final/biometric_data/
+*.npz
+*.npy
+
+# Documentos restringidos del Lab 05
+labs/05-examen-final/data/restringido/
+
+labs/05-examen-final/models/face_landmarker.task

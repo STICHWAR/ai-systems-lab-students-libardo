@@ -1,12 +1,12 @@
+
 """Capacidades del asistente expresadas como tools.
 
-El RAG del Lab 02 se convierte aquí en una tool más (buscar_documentos). Solo hace la
-RECUPERACIÓN: devuelve los fragmentos numerados con su fuente, y el LLM que la pidió
-redacta la respuesta. Para el agente no hay diferencia entre buscar en documentos,
-consultar un servidor MCP o ejecutar una función local: todas son `Tool`.
+El RAG se convierte en una herramienta del agente (buscar_documentos).
+Realiza la recuperación de información y devuelve fragmentos numerados
+con su fuente, respetando los permisos del rol autenticado.
 
-Uso (sin LLM ni API key; requiere el índice de ingest.py):
-    uv run python labs/04-agent-orchestration/capabilities.py "¿Cuándo es el primer parcial?"
+Uso:
+    uv run python labs/04-agent-orchestration/capabilities.py
 """
 
 import asyncio
@@ -17,32 +17,107 @@ from rag import CourseRAG, format_context
 from tools import Tool
 
 
-def rag_tool(rag: CourseRAG) -> Tool:
-    # TODO 1: convierte la recuperación del Lab 02 en una Tool (mira los campos de Tool en tools.py).
-    #   - name: "buscar_documentos"; origin: "rag"; read_only: True (buscar no modifica nada).
-    #   - description: qué documentos contiene (programa, docente, horarios, evaluación, fechas de
-    #     parciales, políticas, anuncios, preguntas frecuentes) y que devuelve fragmentos numerados.
-    #     Recuerda: el modelo decide cuándo usarla leyendo SOLO esto.
-    #   - parameters: un objeto con una propiedad "consulta" de tipo string (obligatoria), cuya
-    #     descripción pida una pregunta autocontenida, p. ej. "fecha del primer parcial".
-    #   - run: una función async que reciba los argumentos, recupere con rag.retrieve(consulta) y
-    #     devuelva format_context(resultados). Solo recupera: NO llames a rag.answer (¿por qué?).
-    raise NotImplementedError("Completa rag_tool")
+# Roles reconocidos por el sistema.
+VALID_ROLES = {"publico", "estudiante", "docente"}
+
+
+def rag_tool(
+    rag: CourseRAG,
+    authenticated_role: str = "publico",
+) -> Tool:
+    """Convierte la recuperación documental en una herramienta con permisos."""
+
+    # Validar el rol antes de crear la herramienta.
+    if authenticated_role not in VALID_ROLES:
+        raise PermissionError(
+            f"El rol '{authenticated_role}' no está autorizado."
+        )
+
+    description = (
+        "Busca información en los documentos del curso, incluyendo programa, "
+        "horarios, evaluación, fechas de parciales, políticas, anuncios y "
+        "preguntas frecuentes. Devuelve fragmentos numerados con sus fuentes."
+    )
+
+    # El modelo únicamente puede proporcionar la consulta.
+    # No puede elegir ni modificar el rol de acceso.
+    parameters = {
+        "type": "object",
+        "properties": {
+            "consulta": {
+                "type": "string",
+                "description": (
+                    "Pregunta autocontenida sobre el curso. "
+                    "Por ejemplo: fecha del primer parcial."
+                ),
+            }
+        },
+        "required": ["consulta"],
+    }
+
+    async def run(arguments: dict[str, Any]) -> str:
+        consulta = arguments.get("consulta")
+
+        if not isinstance(consulta, str) or not consulta.strip():
+            return "Error: debes proporcionar una consulta válida."
+
+        # El rol procede del contexto confiable de la aplicación,
+        # no de los argumentos enviados por el LLM.
+        resultados = rag.retrieve(
+            consulta,
+            role=authenticated_role,
+        )
+
+        return format_context(resultados)
+
+    return Tool(
+        name="buscar_documentos",
+        description=description,
+        parameters=parameters,
+        run=run,
+        read_only=True,
+        origin="rag",
+    )
 
 
 async def _demo(question: str) -> None:
+    """Prueba la recuperación documental sin utilizar un LLM."""
+
     from config import load_rag_settings
     from embeddings import Embedder
     from vector_store import VectorStore
 
     settings = load_rag_settings()
     store = VectorStore.load(settings.index_dir)
-    # llm=None: la tool solo usa rag.retrieve(), que no llama al LLM (rag.answer() sí lo haría).
-    rag = CourseRAG(None, Embedder(store.embedding_model), store, settings.top_k, settings.min_score)
-    tool = rag_tool(rag)
+
+    # La demostración funciona como usuario público.
+    # La aplicación principal deberá proporcionar el rol autenticado.
+    authenticated_role = "publico"
+
+    rag = CourseRAG(
+        None,
+        Embedder(store.embedding_model),
+        store,
+        settings.top_k,
+        settings.min_score,
+    )
+
+    tool = rag_tool(
+        rag,
+        authenticated_role=authenticated_role,
+    )
+
+    print(f"Rol de demostración: {authenticated_role}")
     print(f"{tool.name}({{'consulta': {question!r}}}) →\n")
-    print(await tool.run({"consulta": question}))
+
+    resultado = await tool.run({"consulta": question})
+    print(resultado)
 
 
 if __name__ == "__main__":
-    asyncio.run(_demo(" ".join(sys.argv[1:]) or "¿Cuándo es el primer parcial?"))
+    asyncio.run(
+        _demo(
+            " ".join(sys.argv[1:])
+            or "¿Cuándo es el primer parcial?"
+        )
+    )

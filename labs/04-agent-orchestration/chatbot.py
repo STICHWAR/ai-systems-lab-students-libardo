@@ -94,7 +94,8 @@ async def chat(orchestrator: Orchestrator, mode: Mode, debug: bool) -> None:
             print("(historial borrado)\n")
             continue
         if user_input == "/tools":
-            print_tools(list(orchestrator.agent.tools.values()))
+            # Las herramientas disponibles en el orquestador se conservan en action_tools.
+            print_tools(orchestrator.action_tools)
             print()
             continue
         if user_input.startswith("/modo"):
@@ -147,11 +148,16 @@ async def main() -> None:
 
         settings = orchestrator.llm.settings
         print(f"Asistente del Curso de IA · orquestador  ({settings.provider} · {settings.model})")
-        print(f"Índice: {len(orchestrator.rag.store)} fragmentos · máximo {orchestrator.agent.max_steps} pasos")
+        print(
+            f"Índice: {len(orchestrator.rag.store)} fragmentos "
+            f"· máximo {orchestrator.max_steps} pasos"
+        )
         print("Capacidades:")
-        print_tools(list(orchestrator.agent.tools.values()))
+        # El orquestador expone las herramientas de acción en action_tools.
+        print_tools(orchestrator.action_tools)
         print("Comandos: /modo agente|router  /tools  /reiniciar  /salir\n")
         await chat(orchestrator, mode, debug)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -36,15 +36,35 @@ class RouterResult:
     fallback: bool  # True si se usó FALLBACK_ROUTE porque la salida del LLM no era válida
 
 
+
 def route(llm: LLMClient, question: str) -> RouterResult:
-    response = llm.chat(build_router_messages(question), temperature=0, max_tokens=150, json_mode=True)
-    # TODO 4: convierte response.text en un RouteDecision validado (como en structured.py del Lab 01):
-    #   - usa RouteDecision.model_validate_json(response.text), que verifica el JSON y el esquema
-    #     (una "ruta" que no sea directa/documentos/acciones también es un error);
-    #   - si lanza ValidationError, NO detengas el programa: devuelve un RouterResult con
-    #     RouteDecision(ruta=FALLBACK_ROUTE, motivo=<explica que se usó la ruta de respaldo>) y fallback=True;
-    #   - si es válido, devuelve RouterResult(decision, response, fallback=False).
-    raise NotImplementedError("Completa route")
+    response = llm.chat(
+        build_router_messages(question),
+        temperature=0,
+        max_tokens=150,
+        json_mode=True,
+    )
+
+    try:
+        decision = RouteDecision.model_validate_json(response.text)
+
+        return RouterResult(
+            decision=decision,
+            response=response,
+            fallback=False,
+        )
+
+    except ValidationError:
+        decision = RouteDecision(
+            ruta=FALLBACK_ROUTE,
+            motivo="La respuesta del modelo no fue válida. Se utilizó la ruta de respaldo."
+        )
+
+        return RouterResult(
+            decision=decision,
+            response=response,
+            fallback=True,
+        )
 
 if __name__ == "__main__":
     from config import load_settings
