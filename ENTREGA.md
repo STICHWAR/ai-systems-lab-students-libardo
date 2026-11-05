@@ -30,6 +30,6 @@ pendientes y las limitaciones se encuentran en
 
 ## Estado de publicación
 
-La rama local preparada es `examen-final-completo`. La publicación remota no
-se declara completada hasta que GitHub acepte el push con una cuenta que tenga
-permiso de escritura sobre el repositorio de destino.
+La rama publicada es [`examen-final-completo`](https://github.com/STICHWAR/ai-systems-lab-students-libardo/tree/examen-final-completo).
+La publicación se verificó contra `origin` después del push, sin force push ni
+cambios a otras ramas.
