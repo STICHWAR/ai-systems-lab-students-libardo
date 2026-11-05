@@ -11,5 +11,7 @@ dependencies = [
     "fastembed>=0.5",      # Lab 02: modelo de embeddings local (ONNX, CPU, sin API key)
     "numpy>=1.26",         # Lab 02: vectores y similitud coseno en el vector store
     "mcp>=2.2,<3",
-    "mediapipe>=1.2.2",
+    "mediapipe>=0.10.14",
+    "python-telegram-bot>=21.0,<23",
+    "opencv-python>=4.8",
 ]

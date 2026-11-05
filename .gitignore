@@ -3,12 +3,14 @@
 
 # Entorno de Python
 .venv/
+.uv-cache/
+.uv-python/
 __pycache__/
 *.pyc
 .pytest_cache/
 .ipynb_checkpoints/
 
-# Índices generados por ingest.py (Lab 02)
+# Ãndices generados por ingest.py (Lab 02)
 index/
 
 # Sistema operativo
@@ -16,12 +18,26 @@ index/
 Thumbs.db
 desktop.ini
 
-# Datos biom�tricos y archivos privados (no subir a Git)
+# Datos biométricos y archivos privados (no subir a Git)
 labs/05-examen-final/biometric_data/
 *.npz
 *.npy
 
 # Documentos restringidos del Lab 05
-labs/05-examen-final/data/restringido/
 
 labs/05-examen-final/models/face_landmarker.task
+
+# Examen final: artefactos locales, secretos y datos sensibles
+labs/05-examen-final/models/
+labs/05-examen-final/modelos/
+labs/05-examen-final/rostros/
+labs/05-examen-final/auditoria*.jsonl
+labs/05-examen-final/*.mp4
+labs/05-examen-final/*.jpg
+labs/05-examen-final/*.jpeg
+labs/05-examen-final/*.png
+
+# Estructura de evidencias: nunca almacenar biometría ni credenciales.
+labs/05-examen-final/evidencias/**/biometria/
+labs/05-examen-final/evidencias/**/fotos/
+labs/05-examen-final/evidencias/**/videos/

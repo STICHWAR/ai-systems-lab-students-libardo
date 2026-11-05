@@ -1,0 +1,18 @@
+EXAMEN 5 - VERSION TRABAJADA A PARTIR DE LA RAMA avance-examen-final
+Integrantes: Santiago Villamizar y Libardo Bravo
+
+EMPIEZA LEYENDO:
+- labs/05-examen-final/README_EXAMEN.md   [configuracion y ejecucion]
+- labs/05-examen-final/INFORME_EXAMEN_5.md [informe de entrega]
+
+Incluye RAG, MCP, bot de Telegram, reto de vida, embeddings, sesiones,
+autorizacion por rol y pruebas offline. Los modelos ONNX y datos biometricos
+NO se incluyen por exigencia del examen. Debes descargarlos localmente con
+uv run python labs/05-examen-final/descargar_modelos.py
+
+IMPORTANTE: No está validado el inicio de sesion real, las APIs externas ni
+el comportamiento del LLM en Telegram. Faltan las cuentas, fotos consentidas,
+los codigos universitarios, la calibracion FAR/FRR, el video y evidencias reales.
+
+El ZIP no modifica la rama remota del compañero. No contiene una entrega ya
+probada extremo a extremo; no debe presentarse como tal.

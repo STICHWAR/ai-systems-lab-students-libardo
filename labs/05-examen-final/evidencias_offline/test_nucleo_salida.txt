@@ -1,0 +1,15 @@
+test_access_labels (__main__.SecurityTest.test_access_labels) ... ok
+test_bruteforce (__main__.SecurityTest.test_bruteforce) ... ok
+test_challenge_expires (__main__.SecurityTest.test_challenge_expires) ... ok
+test_challenge_one_use (__main__.SecurityTest.test_challenge_one_use) ... ok
+test_deny_other_student (__main__.SecurityTest.test_deny_other_student) ... ok
+test_deny_without_session (__main__.SecurityTest.test_deny_without_session) ... ok
+test_indirect_prompt_injection_is_data (__main__.SecurityTest.test_indirect_prompt_injection_is_data) ... ok
+test_rag_filter_before_scores (__main__.SecurityTest.test_rag_filter_before_scores) ... ok
+test_role_tool_filter (__main__.SecurityTest.test_role_tool_filter) ... ok
+test_session_expiration (__main__.SecurityTest.test_session_expiration) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.012s
+
+OK

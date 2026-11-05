@@ -1,160 +1,69 @@
-﻿import cv2
-import numpy as np
-from pathlib import Path
-
-from auth import SessionManager, AuthenticationError
-from face_auth import FaceAuthenticator, FaceAuthenticationError
-from liveness import LivenessDetector, LivenessError
-from biometric_store import BiometricStore, BiometricStoreError
-
-
+"""Verificación uno a uno: video-nota + reto consumible + vínculo Telegram."""
+import os
+from sessions import Sessions
+from biometric_store import BiometricStore
+from face_auth import FaceAuthenticator
+from liveness import LivenessDetector
+from audit import Audit
 class AuthenticationService:
-    """Coordina la autenticación facial y la creación de sesiones."""
-
-    def __init__(
-        self,
-        session_manager=None,
-        biometric_store=None,
-        face_authenticator=None,
-        liveness_detector=None
-    ):
-        self.session_manager = session_manager or SessionManager()
-        self.biometric_store = biometric_store or BiometricStore()
-        self.face_authenticator = (
-            face_authenticator or FaceAuthenticator()
-        )
-        self.liveness_detector = (
-            liveness_detector or LivenessDetector()
-        )
-
-    def _extract_video_frame(self, video_path):
-        """Extrae un fotograma del punto medio del video."""
-        path = Path(video_path)
-
-        if not path.is_file():
-            raise AuthenticationError(
-                "No se encontró el video de autenticación."
-            )
-
-        capture = cv2.VideoCapture(str(path))
-
-        if not capture.isOpened():
-            raise AuthenticationError(
-                "No se pudo abrir el video de autenticación."
-            )
-
+    def __init__(self,sessions=None,biometrics=None,facial=None,liveness=None,audit=None):
+        self.sessions=sessions or Sessions()
+        self.biometrics=biometrics or BiometricStore()
+        self.facial=facial or FaceAuthenticator(threshold=float(os.getenv('FACE_MATCH_THRESHOLD','.363')))
+        self.liveness=liveness or LivenessDetector(self.facial)
+        self.audit=audit or Audit()
+    def login(self,tg_id,path,is_video_note=True,is_forwarded=False):
+        sim=None
         try:
-            frame_count = int(
-                capture.get(cv2.CAP_PROP_FRAME_COUNT)
-            )
+            # Consumir siempre el desafío, incluso si el video fracasa.
+            challenge=self.sessions.consume(tg_id)
+            if not is_video_note or is_forwarded:raise PermissionError('Formato o procedencia inválidos')
+            user=self.sessions.user(tg_id)
+            if not user:raise PermissionError('Cuenta sin registro')
+            live=self.liveness.analyze_video(path,challenge['option'])
+            refs=self.biometrics.load_embedding(user['id'])
+            candidate=self.facial.extract_embedding(live['frontal_frame'])
+            match=self.facial.compare_embeddings(refs,candidate)
+            sim=match['similarity']
+            if not match['matched']:raise PermissionError('No coincide la identidad')
+            identity=self.sessions.success(tg_id)
+            self.audit.write(tg_id,'login_aceptado',similarity=sim)
+            return identity
+        except Exception as exc:
+            self.sessions.failed(tg_id)
+            # Los PermissionError proceden de controles deterministas (reto
+            # vencido, formato, identidad); su texto es un motivo técnico y
+            # no incluye el medio ni datos biométricos.
+            reason=str(exc) if isinstance(exc,PermissionError) else type(exc).__name__
+            self.audit.write(tg_id,'login_rechazado',reason=reason,similarity=sim)
+            raise PermissionError('No se pudo completar el inicio de sesión.') from exc
+    def reject_pending(self,tg_id,reason):
+        """Rechaza un medio antes de descargarlo, consumiendo el reto pendiente.
 
-            fps = capture.get(cv2.CAP_PROP_FPS)
-
-            if (
-                frame_count <= 0
-                or not np.isfinite(fps)
-                or fps <= 0
-            ):
-                raise AuthenticationError(
-                    "El video no contiene información válida."
-                )
-
-            duration = frame_count / fps
-
-            if duration < 1 or duration > 60:
-                raise AuthenticationError(
-                    "El video debe durar entre 1 y 60 segundos."
-                )
-
-            middle_frame = frame_count // 2
-
-            capture.set(
-                cv2.CAP_PROP_POS_FRAMES,
-                middle_frame
-            )
-
-            success, frame = capture.read()
-
-            if not success or frame is None:
-                raise AuthenticationError(
-                    "No se pudo extraer un fotograma del video."
-                )
-
-            return frame
-
-        finally:
-            capture.release()
-
-    def authenticate(self, telegram_user_id, video_path):
+        Se usa para formatos no admitidos y reenvíos. El reto se consume y el
+        fallo cuenta igual que una autenticación inválida, sin procesar video.
         """
-        Autentica al usuario mediante Telegram, reconocimiento
-        facial y prueba de vida.
-        """
-        user = self.session_manager.find_user_by_telegram_id(
-            telegram_user_id
-        )
-
-        if user is None:
-            raise AuthenticationError(
-                "El identificador de Telegram no está autorizado."
-            )
-
         try:
-            reference_embedding = (
-                self.biometric_store.load_embedding(user["id"])
-            )
+            self.sessions.consume(tg_id)
+        except Exception as exc:
+            self.audit.write(tg_id,'login_rechazado',reason=type(exc).__name__)
+            raise PermissionError('No hay un reto válido pendiente.') from exc
+        self.sessions.failed(tg_id)
+        self.audit.write(tg_id,'login_rechazado',reason=reason)
+        raise PermissionError('Medio rechazado.')
+    def begin_login(self,tg_id):
+        """Inicia un reto y deja auditoría determinista cuando no puede hacerlo."""
+        try:
+            return self.sessions.begin(tg_id)
+        except PermissionError as exc:
+            event='login_bloqueado' if self.sessions.blocked(tg_id) else 'login_inicio_rechazado'
+            self.audit.write(tg_id,event,reason=str(exc))
+            raise
+    def reject_missing_challenge(self,tg_id):
+        """Registra un intento con reto inexistente o previamente consumido.
 
-            liveness_result = (
-                self.liveness_detector.analyze_video(video_path)
-            )
-
-            if not liveness_result.get("live", False):
-                raise AuthenticationError(
-                    "La prueba de vida no fue satisfactoria."
-                )
-
-            frame = self._extract_video_frame(video_path)
-
-            candidate_embedding = (
-                self.face_authenticator.extract_embedding(frame)
-            )
-
-            face_result = (
-                self.face_authenticator.compare_embeddings(
-                    reference_embedding,
-                    candidate_embedding
-                )
-            )
-
-            if not face_result.get("matched", False):
-                raise AuthenticationError(
-                    "El rostro no coincide con el usuario registrado."
-                )
-
-            session = self.session_manager._create_session_for_user(
-                user
-            )
-
-            return {
-                "authenticated": True,
-                "session": session,
-                "verification": {
-                    "face_verified": True,
-                    "liveness_verified": True
-                }
-            }
-
-        except (
-            BiometricStoreError,
-            FaceAuthenticationError,
-            LivenessError,
-            FileNotFoundError
-        ) as error:
-            raise AuthenticationError(
-                f"No fue posible completar la autenticación: {error}"
-            ) from error
-
-    def close(self):
-        """Libera los recursos del detector de prueba de vida."""
-        if self.liveness_detector is not None:
-            self.liveness_detector.close()
+        No incrementa el contador de fallos porque no había un reto válido que
+        pudiera autenticarse.
+        """
+        self.audit.write(tg_id,'login_rechazado',reason='RetoInexistenteOReutilizado')
+        raise PermissionError('No hay un reto válido pendiente.')

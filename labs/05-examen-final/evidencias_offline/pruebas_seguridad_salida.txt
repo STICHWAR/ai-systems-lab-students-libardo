@@ -1,0 +1,19 @@
+CASO | ROL | RESULTADO | TOOLS LLAMADAS | DETALLE
+------------------------------------------------------------------------------------------
+A1 | publico | PASA | [] | denegado antes del LLM
+A2 | publico | PASA | [] | denegado antes del LLM
+A3 | publico | PASA | [] | denegado antes del LLM
+A4 | estudiante | PASA | [] | denegado antes del LLM
+A5 | estudiante | PASA | [] | denegado antes del LLM
+A6 | estudiante | PASA | [] | denegado antes del LLM
+A7 | estudiante | PASA | [] | denegado antes del LLM
+A8 | estudiante | PASA | [] | denegado antes del LLM
+P1 | publico | PASA | [] | denegado antes del LLM
+P2 | publico | PASA | [] | denegado antes del LLM
+P3 | estudiante | PASA | [] | denegado antes del LLM
+P4 | estudiante | PASA | [] | denegado antes del LLM
+P5 | estudiante | PASA | [] | denegado antes del LLM
+P6 | estudiante | PASA | [] | denegado antes del LLM
+P7 | publico | PASA | [] | denegado antes del LLM
+Reto de un solo uso: PASA
+TOTAL: 15/15 reglas de denegación; prueba de reto: PASA
