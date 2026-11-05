@@ -27,3 +27,9 @@ No se incluyen `.env`, tokens, modelos ONNX, fotos, videos, embeddings,
 índices generados, auditorías JSONL ni logs. Los resultados auditados, los
 pendientes y las limitaciones se encuentran en
 `labs/05-examen-final/INFORME_EXAMEN_5.md`.
+
+## Estado de publicación
+
+La rama local preparada es `examen-final-completo`. La publicación remota no
+se declara completada hasta que GitHub acepte el push con una cuenta que tenga
+permiso de escritura sobre el repositorio de destino.
